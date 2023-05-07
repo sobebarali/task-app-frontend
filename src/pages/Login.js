@@ -1,22 +1,39 @@
 import React, { useState, useCallback } from "react";
 import axios from "axios";
 import "./Login.css";
-import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import Select from "react-select";
+
+const countryList = [
+  { value: "+1", label: "United States +1" },
+  { value: "+44", label: "United Kingdom +44" },
+  { value: "+91", label: "India +91" },
+  // Add more countries here
+];
+
+
 
 const PhoneNumberForm = ({ onSubmit }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(countryList[2]);
 
   const handleSubmit = useCallback(
     (event) => {
       event.preventDefault();
-      onSubmit(phoneNumber);
+      onSubmit(selectedCountry.value + phoneNumber);
     },
-    [onSubmit, phoneNumber]
+    [onSubmit, phoneNumber, selectedCountry]
   );
 
   return (
     <form onSubmit={handleSubmit}>
+      <label htmlFor="country">Country:</label>
+      <Select
+        id="country"
+        options={countryList}
+        value={selectedCountry}
+        onChange={setSelectedCountry}
+      />
       <label htmlFor="mobile-number">Mobile Number:</label>
       <input
         type="tel"
@@ -33,13 +50,17 @@ const PhoneNumberForm = ({ onSubmit }) => {
 
 const OtpForm = ({ onSubmit, onBack, onResend, phoneNumber }) => {
   const [otp, setOtp] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = useCallback(
-    (event) => {
+    async (event) => {
       event.preventDefault();
-      onSubmit(otp);
+      const success = await onSubmit(otp);
+      if (success) {
+        navigate("/tasks");
+      }
     },
-    [onSubmit, otp]
+    [onSubmit, otp, navigate]
   );
 
   return (
@@ -53,9 +74,7 @@ const OtpForm = ({ onSubmit, onBack, onResend, phoneNumber }) => {
         onChange={(event) => setOtp(event.target.value)}
         required
       />
-      <Link to="/task">
-        <button type="submit">Login</button>
-      </Link>
+      <button type="submit">Login</button>
       {onBack && (
         <button type="button" onClick={onBack}>
           Back
@@ -97,10 +116,14 @@ const Login = () => {
             otp,
           }
         );
-        localStorage.setItem("token", response.data.data.token);
-        navigate("/tasks");
+
+        if (response.data.data.token) {
+          localStorage.setItem("token", response.data.data.token);
+          return true;
+        }
       } catch (error) {
-        console.error("Error logging in:", error);
+        alert("Invalid OTP");
+        return false;
       }
     },
     [phoneNumber]
@@ -111,7 +134,8 @@ const Login = () => {
       await axios.post("https://task-manager-7h07.onrender.com/register", {
         phoneNumber,
       });
-      // You can add any custom logic here, e.g., show a message that the OTP was resent.
+      setPhoneNumber(phoneNumber);
+      alert("OTP sent successfully");
     } catch (error) {
       console.error("Error resending OTP:", error);
     }
