@@ -70,3 +70,20 @@ button[type="button"] {
 button[type="button"]:hover {
   background-color: #5a6268;
 }
+
+/* Timer styles */
+div {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+.resend-button:disabled {
+  background-color: #a8a8a8;
+  background-image: linear-gradient(135deg, #a8a8a8 0%, #949494 100%);
+  cursor: not-allowed;
+}
+
+.resend-button:disabled:hover {
+  box-shadow: none;
+}

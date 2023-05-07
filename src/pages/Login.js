@@ -1,8 +1,8 @@
-import React, { useState, useCallback } from "react";
-import axios from "axios";
+import React, { useState, useCallback, useEffect } from "react";
 import "./Login.css";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
+import axiosInstance from "../axiosConfig";
 
 const countryList = [
   { value: "+1", label: "United States +1" },
@@ -10,8 +10,6 @@ const countryList = [
   { value: "+91", label: "India +91" },
   // Add more countries here
 ];
-
-
 
 const PhoneNumberForm = ({ onSubmit }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -48,9 +46,40 @@ const PhoneNumberForm = ({ onSubmit }) => {
   );
 };
 
-const OtpForm = ({ onSubmit, onBack, onResend, phoneNumber }) => {
+const OtpForm = ({
+  onSubmit,
+  onBack,
+  onResend,
+  phoneNumber,
+  initialDisableResend,
+}) => {
   const [otp, setOtp] = useState("");
+  const [resendDisabled, setResendDisabled] = useState(initialDisableResend);
+  const [timeLeft, setTimeLeft] = useState(60);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (resendDisabled) {
+      setTimeLeft(60);
+      const timer = setInterval(() => {
+        setTimeLeft((prevTime) => prevTime - 1);
+      }, 1000);
+
+      const disableTimeout = setTimeout(() => {
+        setResendDisabled(false);
+      }, 60000);
+
+      return () => {
+        clearInterval(timer);
+        clearTimeout(disableTimeout);
+      };
+    }
+  }, [resendDisabled]);
+
+  const handleResend = () => {
+    setResendDisabled(true);
+    onResend(phoneNumber);
+  };
 
   const handleSubmit = useCallback(
     async (event) => {
@@ -66,6 +95,7 @@ const OtpForm = ({ onSubmit, onBack, onResend, phoneNumber }) => {
   return (
     <form onSubmit={handleSubmit}>
       <label htmlFor="otp">Enter OTP:</label>
+      <p>OTP sent to {phoneNumber}</p>
       <input
         type="text"
         id="otp"
@@ -81,9 +111,17 @@ const OtpForm = ({ onSubmit, onBack, onResend, phoneNumber }) => {
         </button>
       )}
       {onResend && (
-        <button type="button" onClick={() => onResend(phoneNumber)}>
-          Resend OTP
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resendDisabled}
+            className="resend-button"
+          >
+            Resend OTP
+          </button>
+          {resendDisabled && <div>{timeLeft} seconds left</div>}
+        </>
       )}
     </form>
   );
@@ -92,14 +130,11 @@ const OtpForm = ({ onSubmit, onBack, onResend, phoneNumber }) => {
 const Login = () => {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const navigate = useNavigate();
 
   const handleMobileSubmit = useCallback(async (phoneNumber) => {
     try {
       setShowOtpInput(true);
-      await axios.post("https://task-manager-7h07.onrender.com/register", {
-        phoneNumber,
-      });
+      await axiosInstance.post("/register", { phoneNumber });
       setPhoneNumber(phoneNumber);
     } catch (error) {
       console.error("Error sending OTP:", error);
@@ -109,13 +144,10 @@ const Login = () => {
   const handleOtpSubmit = useCallback(
     async (otp) => {
       try {
-        const response = await axios.post(
-          "https://task-manager-7h07.onrender.com/login",
-          {
-            phoneNumber,
-            otp,
-          }
-        );
+        const response = await axiosInstance.post("/login", {
+          phoneNumber,
+          otp,
+        });
 
         if (response.data.data.token) {
           localStorage.setItem("token", response.data.data.token);
@@ -131,9 +163,7 @@ const Login = () => {
 
   const handleResendOtp = useCallback(async (phoneNumber) => {
     try {
-      await axios.post("https://task-manager-7h07.onrender.com/register", {
-        phoneNumber,
-      });
+      await axiosInstance.post("/register", { phoneNumber });
       setPhoneNumber(phoneNumber);
       alert("OTP sent successfully");
     } catch (error) {
@@ -156,6 +186,7 @@ const Login = () => {
           onBack={handleBack}
           onResend={handleResendOtp}
           phoneNumber={phoneNumber}
+          initialDisableResend
         />
       )}
     </div>
